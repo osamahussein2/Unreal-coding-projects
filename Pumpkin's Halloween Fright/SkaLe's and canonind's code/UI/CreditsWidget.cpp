@@ -3,6 +3,8 @@
 
 #include "UI/CreditsWidget.h"
 
+#include "Core/HJGameModeBase.h"
+
 UCreditsWidget::UCreditsWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -10,4 +12,16 @@ UCreditsWidget::UCreditsWidget(const FObjectInitializer& ObjectInitializer)
 	bShowMouseCursor = true;
 	bHideOnPauseToggle = false;
 	bPauseGameWhenShown = true;
+}
+
+void UCreditsWidget::OnRestartClicked()
+{
+	bIsEndGame = false;
+	AHJGameModeBase* GM = Cast<AHJGameModeBase>(GetOwiningGameMode());
+	GM->RestartGame();
+}
+
+void UCreditsWidget::FlagEndGameCredits()
+{
+	bIsEndGame = true;
 }

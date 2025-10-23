@@ -99,7 +99,8 @@ void AHJGameModeBase::ShowCredits()
 {
 	if (CachedUIManager && CreditsWidgetClass)
 	{
-		CachedUIManager->PushWidget(CreditsWidgetClass);
+		UCreditsWidget* CreditsWidget = Cast<UCreditsWidget>(CachedUIManager->PushWidget(CreditsWidgetClass));
+		CreditsWidget->FlagEndGameCredits();
 	}
 }
 

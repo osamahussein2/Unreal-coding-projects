@@ -18,4 +18,12 @@ class GDTV_HALLOWEEN2025_API UCreditsWidget : public UBaseUIWidget
 public:
 	UCreditsWidget(const FObjectInitializer& ObjectInitializer);
 
+	UFUNCTION(BlueprintCallable, Category = "CreditsMenu")
+	void OnRestartClicked();
+
+	void FlagEndGameCredits();
+
+protected:
+	UPROPERTY(BlueprintReadOnly, Category = "CreditsMenu")
+	bool bIsEndGame = false;
 };
