@@ -6,5 +6,9 @@ Cilivan Missile game - https://osamahussein.itch.io/civilian-missile
 
 Project Chronos game - https://osamahussein.itch.io/project-chronos
 
-Pumpkin's Halloween Fright - https://osamahussein.itch.io/gamedevtv-halloween-jam-2025
+Pumpkin's Halloween Fright - https://osamahussein.itch.io/pumpkins-halloween-fright
+
+Bora Projects - https://osamahussein.itch.io/bora-projects
+
+
 
