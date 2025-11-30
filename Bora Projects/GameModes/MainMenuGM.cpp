@@ -29,5 +29,10 @@ void AMainMenuGM::BeginPlay()
 	{
 		GetWorld()->GetFirstPlayerController()->Possess(MainMenuCharacter);
 		MainMenuCharacter->EnableInput(GetWorld()->GetFirstPlayerController());
+
+		MainMenuCharacter->EnableUIInput();
+		//MainMenuCharacter->InitializeMainMenuMobileWidget();
+
+		MainMenuCharacter = nullptr;
 	}
 }

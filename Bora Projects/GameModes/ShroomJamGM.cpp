@@ -56,12 +56,12 @@ void AShroomJamGM::BeginPlay()
 	// Check if the player character cast works to assign found cine camera to player's view target
 	if (APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(CachedPlayerCharacter))
 	{
-		//PlayerCharacter->DisableMouseCursor();
+		PlayerCharacter->DisableMouseCursor();
 		PlayerCharacter->AssignCineCameraToPlayer();
 		PlayerCharacter->ShowPlayerHUD(); // Also show the HUD as well
 
 		// For mobile builds only the mobile touch interface will pop up for the player
-		PlayerCharacter->InitializeMobileInterface();
+		//PlayerCharacter->InitializeMobileInterface();
 	}
 
 	// Destroy player start after player has spawned into the level

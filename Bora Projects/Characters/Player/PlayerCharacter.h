@@ -50,12 +50,17 @@ public:
 	void MoveCamera(const FInputActionValue& value_);
 
 	UHealthRegenerationComponent* GetHealthRegenerationComponent() const;
+	UGameplayTagComponent* GetGameplayTagComponent() const;
+	
+	FVector GetRelativeDuckPosition() const { return duckRelativePosition; }
 
 	void ShowPauseMenu();
 	void HidePauseMenu();
 
 	void StartCrouch();
 	void EndCrouch();
+
+	void Interact();
 
 	UFUNCTION()
 	void ChangeGameplayTag(FName AddedTag, FName RemoveTag);
@@ -83,9 +88,13 @@ public:
 
 	void ShowGameWonScreen();
 
+	FVector GetCameraTargetLocation();
+
 private:
 	void RegeneratePlayerHealth(float& DeltaTime);
 	void UpdatePlayerHealthInformation(float& DeltaTime);
+
+	void UpdateDuckWhenThrowing(class AInteractableDuck* duck_);
 
 private:
 	APlayerController* playerController;
@@ -115,7 +124,7 @@ private:
 	USceneCaptureComponent2D* sceneCaptureComponent;
 
 	UPROPERTY(EditAnywhere)
-	UPaperSpriteComponent* spriteComponent;
+	UStaticMeshComponent* spriteComponent;
 
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<UPlayerHUDWidget> playerHUDClass;
@@ -139,6 +148,9 @@ private:
 	UPROPERTY(EditAnywhere)
 	UAudioComponent* musicComponent;
 
+	UPROPERTY(EditAnywhere)
+	USceneComponent* sceneComponent;
+
 	// Camera crouch
 	UPROPERTY(EditAnywhere, Category = "Camera Position")
 	float maxCrouchPosition = -40.0f;
@@ -153,25 +165,32 @@ private:
 
 	float healTimer;
 
-	//float damageTime;
+	UPROPERTY(EditAnywhere, Category = "Holding Duck Parameters")
+	FVector duckRelativePosition = FVector(0.0f, 50.0f, 0.0f);
 
-public:
-	// Mobile touch input
-	void StartTouchInput(const FInputActionValue& Value);
+	UPROPERTY(EditAnywhere, Category = "Holding Duck Parameters")
+	float throwMultiplier = 10.0f;
 
-	// Mobile related functions
-	void MobileControlCamera(const FInputActionValue& Value);
+	UPROPERTY(EditAnywhere, Category = "Holding Duck Parameters")
+	float duckVerticalMoveMultiplier = 1.5f;
 
-	void InitializeMobileInterface();
-
-private:
-	// Mobile related variables
-	FVector2D startTouchLocation;
-
-	UPROPERTY(EditAnywhere)
-	UTouchInterface* gameTouchInterface;
-
-	// Mobile booleans
-	bool isTouchInterfaceEnabled;
-	bool canDragCamera;
+//public:
+//	// Mobile touch input
+//	void StartTouchInput(const FInputActionValue& Value);
+//
+//	// Mobile related functions
+//	void MobileControlCamera(const FInputActionValue& Value);
+//
+//	void InitializeMobileInterface();
+//
+//private:
+//	// Mobile related variables
+//	FVector2D startTouchLocation;
+//
+//	UPROPERTY(EditAnywhere)
+//	UTouchInterface* gameTouchInterface;
+//
+//	// Mobile booleans
+//	bool isTouchInterfaceEnabled;
+//	bool canDragCamera;
 };

@@ -34,7 +34,7 @@ private:
 	URegularHealthComponent* regularHealthComponent;
 
 	UPROPERTY(EditAnywhere)
-	UPaperSpriteComponent* spriteComponent;
+	UStaticMeshComponent* spriteComponent;
 
 protected:
 	// Enemy widget

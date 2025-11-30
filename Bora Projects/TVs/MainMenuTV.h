@@ -40,8 +40,6 @@ private:
 
 	void HandleMouseButton(const FKey& Key, bool& WasPressed);
 
-	void EnableUIInput();
-
 private:
 	UPROPERTY(EditAnywhere)
 	UStaticMeshComponent* cubeMesh;
@@ -60,7 +58,6 @@ private:
 	FVector2D lastWidgetMousePosition;
 	FVector2D renderTargetSize;
 
-	bool meshHit = false;
 	bool leftMousePressed = false;
 
 	FVector currentHitLocation;

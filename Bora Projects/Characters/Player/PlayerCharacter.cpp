@@ -9,6 +9,9 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Objects/InteractableDuck.h"
+
+AInteractableDuck* duck = nullptr;
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -26,7 +29,7 @@ APlayerCharacter::APlayerCharacter()
 	sceneCaptureComponent = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("MinimapSceneCapture"));
 	sceneCaptureComponent->SetupAttachment(minimapSpringArm);
 
-	spriteComponent = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("MinimapSprite"));
+	spriteComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MinimapSprite"));
 	spriteComponent->SetupAttachment(GetMesh());
 
 	spriteComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -39,18 +42,21 @@ APlayerCharacter::APlayerCharacter()
 	musicComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("MusicComponent"));
 	musicComponent->SetupAttachment(GetCapsuleComponent());
 
+	sceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("SceneComponent"));
+	sceneComponent->SetupAttachment(cameraComponent);
+
 	playerHUD = nullptr;
 	pauseMenu = nullptr;
 
 	startingWalkSpeed = 0.0f;
 
 	// Mobile related variables should be null and false upon construction if we're building for PC
-	gameTouchInterface = nullptr;
+	/*gameTouchInterface = nullptr;
 
 	isTouchInterfaceEnabled = false;
 	canDragCamera = false;
 
-	startTouchLocation = FVector2D::Zero();
+	startTouchLocation = FVector2D::Zero();*/
 }
 
 // Called when the game starts or when spawned
@@ -111,18 +117,18 @@ void APlayerCharacter::BeginPlay()
 
 	// Start with default max walk speed
 	startingWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
+
+	// Find a duck in the level
+	TArray<AActor*> FoundDuck;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AInteractableDuck::StaticClass(), FoundDuck);
+
+	duck = Cast<AInteractableDuck>(FoundDuck[0]);
 }
 
 // Called every frame
 void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-	// Update the scene capture's rotation if it's valid that is
-	if (sceneCapture && sceneCapture->GetActorRotation() != GetControlRotation())
-	{
-		sceneCapture->SetActorRotation(GetControlRotation());
-	}
 
 	/* Check if gameplay tag component is valid and doesn't have the idle action tag, as well as character's
 	movement being less than 0.01 which is close to 0 (stopping movement) */
@@ -195,15 +201,22 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 			&APlayerCharacter::EndCrouch);
 	}
 
+	// Press interact
+	if (PlayerDataAsset && PlayerDataAsset->IA_Interact)
+	{
+		playerEnhancedInputcomponent->BindAction(PlayerDataAsset->IA_Interact, ETriggerEvent::Triggered, this,
+			&APlayerCharacter::Interact);
+	}
+
 	// Mobile camera controls
-	if (PlayerDataAsset && PlayerDataAsset->IA_Touch && gameTouchInterface)
+	/*if (PlayerDataAsset && PlayerDataAsset->IA_Touch && gameTouchInterface)
 	{
 		playerEnhancedInputcomponent->BindAction(PlayerDataAsset->IA_Touch, ETriggerEvent::Started, this,
 			&APlayerCharacter::StartTouchInput);
 
 		playerEnhancedInputcomponent->BindAction(PlayerDataAsset->IA_Touch, ETriggerEvent::Ongoing, this,
 			&APlayerCharacter::MobileControlCamera);
-	}
+	}*/
 }
 
 void APlayerCharacter::MoveCharacter(const FInputActionValue& value_)
@@ -222,6 +235,19 @@ void APlayerCharacter::MoveCamera(const FInputActionValue& value_)
 {
 	AddControllerYawInput(value_.Get<FVector2D>().X);
 	AddControllerPitchInput(value_.Get<FVector2D>().Y);
+
+	// Update the scene capture's rotation if it's valid that is
+	if (sceneCapture)
+	{
+		sceneCapture->SetActorRotation(GetControlRotation());
+
+		if (duck && gameplayTagComponent->HasActionTag("PlayerActions.Throwing"))
+		{
+			//UE_LOG(LogTemp, Warning, TEXT("%f"), GetControlRotation().Pitch);
+
+			UpdateDuckWhenThrowing(duck);
+		}
+	}
 }
 
 UHealthRegenerationComponent* APlayerCharacter::GetHealthRegenerationComponent() const
@@ -229,23 +255,28 @@ UHealthRegenerationComponent* APlayerCharacter::GetHealthRegenerationComponent()
 	return healthRegenerationComponent;
 }
 
+UGameplayTagComponent* APlayerCharacter::GetGameplayTagComponent() const
+{
+	return gameplayTagComponent;
+}
+
 void APlayerCharacter::ShowPauseMenu()
 {
 	HidePlayerHUD();
 
 	// Hide mobile interface when pausing game
-	if (gameTouchInterface && playerController)
+	/*if (gameTouchInterface && playerController)
 	{
 		playerController->ActivateTouchInterface(nullptr);
 		isTouchInterfaceEnabled = false;
 		canDragCamera = false;
-	}
+	}*/
 
 	if (!pauseMenu && playerController)
 	{
 		pauseMenu = CreateWidget<UPauseMenuWidget>(playerController, pauseMenuClass);
 
-		//EnableMouseCursor();
+		EnableMouseCursor();
 	}
 
 	if (pauseMenu) pauseMenu->AddToViewport();
@@ -256,14 +287,14 @@ void APlayerCharacter::HidePauseMenu()
 	if (pauseMenu && !pauseMenu->IsInViewport())
 	{
 		// Show mobile interface when resuming the game
-		if (gameTouchInterface && playerController)
+		/*if (gameTouchInterface && playerController)
 		{
 			playerController->ActivateTouchInterface(gameTouchInterface);
 			isTouchInterfaceEnabled = true;
 			canDragCamera = true;
-		}
+		}*/
 
-		//DisableMouseCursor();
+		DisableMouseCursor();
 
 		ShowPlayerHUD();
 
@@ -299,7 +330,7 @@ void APlayerCharacter::EndCrouch()
 		// Set actual max walk speed to back to the starting walk speed set in BeginPlay()
 		GetCharacterMovement()->MaxWalkSpeed = startingWalkSpeed;
 
-		// Start broadcaasting the remove gameplay tag logic and pass in crouch state
+		// Start broadcasting the remove gameplay tag logic and pass in crouch state
 		gameplayTagComponent->GameplayTagRemoved.Broadcast("PlayerActions.Crouching");
 	}
 
@@ -310,6 +341,43 @@ void APlayerCharacter::EndCrouch()
 		{
 			cameraComponent->AddRelativeLocation(FVector(0.0f, 0.0f, cameraMoveSpeed));
 		}
+	}
+}
+
+void APlayerCharacter::Interact()
+{
+	if (!duck || !gameplayTagComponent) return;
+
+	if (!gameplayTagComponent->HasActionTag("PlayerActions.Throwing") && duck->GetInsideTrigger() &&
+		!duck->GetProjectileMovement())
+	{
+		// Start broadcasting the add gameplay tag logic and pass in throwing state
+		gameplayTagComponent->GameplayTagAdded.Broadcast("PlayerActions.Throwing");
+
+		// Attach the duck onto the player
+		duck->AttachToActor(this, FAttachmentTransformRules::SnapToTargetIncludingScale);
+
+		// Update the duck's location and throwing angle when throwing
+		UpdateDuckWhenThrowing(duck);
+	}
+
+	else if (gameplayTagComponent->HasActionTag("PlayerActions.Throwing") && !duck->GetProjectileMovement())
+	{
+		// Detach duck from the player
+		duck->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
+		// Update the duck's target location to update projectile launch and diffuse value
+		duck->SetTargetLocation(GetCameraTargetLocation());
+		duck->SetDuckDiffuseValue(false);
+
+		// Make sure the duck has the projectile movement component working to throw the duck (launching)
+		duck->CreateProjectileComponent();
+
+		// Enable primary actor can tick to update projectile throw
+		duck->SetDuckCanTick(true);
+
+		// Start broadcasting the remove gameplay tag logic and pass in throwing state
+		gameplayTagComponent->GameplayTagRemoved.Broadcast("PlayerActions.Throwing");
 	}
 }
 
@@ -383,7 +451,7 @@ void APlayerCharacter::ShowGameOverScreen()
 
 	if (gameOver)
 	{
-		//EnableMouseCursor();
+		EnableMouseCursor();
 
 		gameOver->AddToViewport();
 		gameOver = nullptr;
@@ -458,11 +526,39 @@ void APlayerCharacter::ShowGameWonScreen()
 
 	if (gameWin)
 	{
-		//EnableMouseCursor();
+		EnableMouseCursor();
 
 		gameWin->AddToViewport();
 		gameWin = nullptr;
 	}
+}
+
+FVector APlayerCharacter::GetCameraTargetLocation()
+{
+	// The target position to return
+	FVector TargetPosition;
+
+	if (GetWorld())
+	{
+		/* Code copied from AdventureCharacter.cpp on lines 250-270 (thank you Epic Games):
+		https://dev.epicgames.com/documentation/en-us/unreal-engine/implement-a-projectile-in-unreal-engine */
+
+		// The result of the line trace
+		FHitResult Hit;
+
+		// Get a line trace from the character along the vector they're looking down
+		const FVector TraceStart = FVector(cameraComponent->GetComponentLocation().X, 
+			cameraComponent->GetComponentLocation().Y, cameraComponent->GetComponentLocation().Z - 1000.0f);
+
+		// Set the line trace to be far enough to collide with any object in the world the character may be looking at
+		const FVector TraceEnd = TraceStart + cameraComponent->GetForwardVector() * throwMultiplier;
+		GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, ECollisionChannel::ECC_Visibility);
+
+		// Set the target position to the impact point of the hit or the end of the trace depending on whether it hit an object
+		TargetPosition = Hit.bBlockingHit ? Hit.ImpactPoint : Hit.TraceEnd;
+	}
+
+	return TargetPosition;
 }
 
 void APlayerCharacter::RegeneratePlayerHealth(float& DeltaTime)
@@ -520,41 +616,75 @@ void APlayerCharacter::UpdatePlayerHealthInformation(float& DeltaTime)
 	}
 }
 
-void APlayerCharacter::InitializeMobileInterface()
+void APlayerCharacter::UpdateDuckWhenThrowing(AInteractableDuck* duck_)
 {
-	// Only for developing the build on mobile devices
-	if (gameTouchInterface && playerController)
+	if (!duck_) return;
+
+	if (GetControlRotation().Pitch < 90.0f)
 	{
-		playerController->ActivateTouchInterface(gameTouchInterface);
-		canDragCamera = true;
-		isTouchInterfaceEnabled = true;
+		duck_->SetActorRelativeLocation(FVector(0.0f, 0.0f, GetControlRotation().Pitch *
+			duckVerticalMoveMultiplier) + duckRelativePosition);
+
+		duck_->SetThrowingAngleModifier(GetControlRotation().Pitch);
+	}
+
+	else
+	{
+		duck_->SetActorRelativeLocation(duckRelativePosition -
+			FVector(0.0f, 0.0f, 360.0f - GetControlRotation().Pitch));
+
+		duck_->SetThrowingAngleModifier(-(360.0f - GetControlRotation().Pitch));
 	}
 }
 
-void APlayerCharacter::StartTouchInput(const FInputActionValue& Value)
-{
-	if (isTouchInterfaceEnabled && canDragCamera)
-	{
-		startTouchLocation = Value.Get<FVector2D>();
-	}
-}
-
-void APlayerCharacter::MobileControlCamera(const FInputActionValue& Value)
-{
-	// Make sure the camera touch and drag only occurs during the press and drag camera is true
-	if (isTouchInterfaceEnabled && canDragCamera)
-	{
-		// Calculate the delta touch location based on difference between current value and the start touch location
-		FVector2D deltaTouchLocation = Value.Get<FVector2D>() - startTouchLocation;
-
-		// Normalize delta touch location to prevent really fast swipe movement
-		deltaTouchLocation.Normalize();
-
-		// Move the camera based on swipe location
-		AddControllerYawInput(deltaTouchLocation.X);
-		AddControllerPitchInput(deltaTouchLocation.Y);
-	}
-}
+//void APlayerCharacter::InitializeMobileInterface()
+//{
+//	// Only for developing the build on mobile devices
+//	if (gameTouchInterface && playerController)
+//	{
+//		playerController->ActivateTouchInterface(gameTouchInterface);
+//		canDragCamera = true;
+//		isTouchInterfaceEnabled = true;
+//	}
+//}
+//
+//void APlayerCharacter::StartTouchInput(const FInputActionValue& Value)
+//{
+//	if (isTouchInterfaceEnabled && canDragCamera)
+//	{
+//		startTouchLocation = Value.Get<FVector2D>();
+//	}
+//}
+//
+//void APlayerCharacter::MobileControlCamera(const FInputActionValue& Value)
+//{
+//	// Make sure the camera touch and drag only occurs during the press and drag camera is true
+//	if (isTouchInterfaceEnabled && canDragCamera)
+//	{
+//		// Calculate the delta touch location based on difference between current value and the start touch location
+//		FVector2D deltaTouchLocation = Value.Get<FVector2D>() - startTouchLocation;
+//
+//		// Normalize delta touch location to prevent really fast swipe movement
+//		deltaTouchLocation.Normalize();
+//
+//		// Move the camera based on swipe location
+//		AddControllerYawInput(deltaTouchLocation.X);
+//		AddControllerPitchInput(deltaTouchLocation.Y);
+//
+//		// Update the scene capture's rotation if it's valid that is
+//		if (sceneCapture)
+//		{
+//			sceneCapture->SetActorRotation(GetControlRotation());
+//
+//			if (duck && gameplayTagComponent->HasActionTag("PlayerActions.Throwing"))
+//			{
+//				UpdateDuckWhenThrowing(duck);
+//			}
+//		}
+//
+//		startTouchLocation = Value.Get<FVector2D>();
+//	}
+//}
 
 // Functions here will be used to bind to the gameplay tag component delegates
 void APlayerCharacter::ChangeGameplayTag(FName AddedTag, FName RemoveTag)

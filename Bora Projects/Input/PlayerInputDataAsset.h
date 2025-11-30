@@ -28,7 +28,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	UInputAction* IA_Crouch;
 
-	// Mobile touch
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
-	UInputAction* IA_Touch;
+	UInputAction* IA_Interact;
+
+	// Mobile touch
+	/*UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UInputAction* IA_Touch;*/
 };

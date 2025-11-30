@@ -9,6 +9,16 @@
 //#include "Perception/AISenseConfig_Sight.h"
 #include "Enemy.generated.h"
 
+UENUM()
+enum class EnemyState : uint8
+{
+	EPatrolling,
+	ECheckingOutDuck,
+	ELosingPlayer,
+	ESeenPlayer,
+	EDetectedPlayer
+};
+
 UCLASS()
 class SHROOMJAM2025_API AEnemy : public AMainEnemy
 {
@@ -26,11 +36,16 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	EnemyState GetEnemyState() const { return enemyState; }
+	void SetEnemyState(EnemyState enemyState_);
+
+	void EnemyIsCloseToDuck();
+	void SetEnemyToDetectPlayer();
+	void GoToDuckLocation(FVector&& duckLocation_);
+
 private:
 	FVector GetDirectionVector(FVector& otherLocation_);
 	FVector GetDirectionVector(FVector&& otherLocation_);
-
-	void UpdatePlayerSeenBoolean();
 
 	void UpdateEnemyDetectionBarUponSeen(float& DeltaTime);
 	void UpdateEnemyDetectionBarUponLost(float& DeltaTime);
@@ -39,6 +54,11 @@ private:
 	void HideEnemyWidgetUponLost();
 
 	void DamagePlayer(float& DeltaTime);
+
+	void StartAnimatingBlender();
+
+	void PatrolAround();
+	void PatrolToDuckLocation(float& DeltaTime);
 
 
 	/*UFUNCTION()
@@ -56,8 +76,6 @@ private:
 
 	AAIController* aiController;
 
-	bool seenPlayer;
-
 	UPROPERTY(EditAnywhere, Category = "Stop Radius")
 	float stoppingRadius = 50.0f;
 
@@ -71,9 +89,32 @@ private:
 	float timeToHideWidget = 1.0f;
 
 	bool timerCleared;
-	bool playerNear;
-
-	bool playerDetected;
 
 	class APlayerCharacter* player;
+
+	// Patrol route variables
+	UPROPERTY(EditAnywhere, Category = "Patrol Routes")
+	TArray<FVector> patrolRoutes;
+
+	UPROPERTY(EditAnywhere, Category = "Patrol Routes")
+	float stopAtPatrolRadius = 0.1f;
+
+	UPROPERTY(EditAnywhere, Category = "Patrol Routes")
+	float distanceToSwitchPatrolRoute = 60.0f;
+
+	int patrolIndex;
+
+	// Duck patrol route variables
+	UPROPERTY(EditAnywhere, Category = "Duck Patrol")
+	float distanceToDuck = 60.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Duck Patrol")
+	float timeToPatrolAgain = 2.0f;
+
+	float checkingOutDuckTimer;
+
+	FVector duckLocation;
+
+	EnemyState enemyState;
+	EnemyState previousEnemyState;
 };

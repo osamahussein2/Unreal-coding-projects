@@ -12,7 +12,7 @@ AGameWonTrigger::AGameWonTrigger()
 	trigger = CreateDefaultSubobject<UBoxComponent>(TEXT("Trigger"));
 	trigger->SetupAttachment(RootComponent);
 
-	// Set the kill box trigger to use the signature of OnComponentBeginOverlap on the OnComponentBeginOverlap function
+	// Set the game won trigger to use the signature of OnComponentBeginOverlap on the OnComponentBeginOverlap function
 	trigger->OnComponentBeginOverlap.AddDynamic(this, &AGameWonTrigger::OnComponentBeginOverlap);
 }
 
@@ -28,7 +28,7 @@ void AGameWonTrigger::OnComponentBeginOverlap(UPrimitiveComponent* OverlappedCom
 		TArray<AActor*> FoundPlayer;
 		UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerCharacter::StaticClass(), FoundPlayer);
 		
-		APlayerCharacter* player = Cast<APlayerCharacter>(FoundPlayer[0]);
+		player = Cast<APlayerCharacter>(FoundPlayer[0]);
 		
 		if (player)
 		{

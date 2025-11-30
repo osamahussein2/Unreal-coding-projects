@@ -29,4 +29,6 @@ protected:
 private:
 	UPROPERTY(EditAnywhere)
 	UBoxComponent* trigger;
+
+	class APlayerCharacter* player = nullptr;
 };

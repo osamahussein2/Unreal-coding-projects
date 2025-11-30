@@ -3,6 +3,7 @@
 
 #include "Characters/Player/MainMenuCharacter.h"
 #include "Kismet/GameplayStatics.h"
+//#include "Widgets/MainMenuWidget_MobileVersion.h"
 
 // Sets default values
 AMainMenuCharacter::AMainMenuCharacter()
@@ -18,13 +19,6 @@ void AMainMenuCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	UGameplayStatics::PlaySound2D(this, LoadObject<USoundBase>(this, TEXT("/Game/Music/main_menu_1")));
-	
-	// Only for developing the build on mobile devices
-	if (mainMenuTouchInterface && Cast<APlayerController>(GetController()))
-	{
-		Cast<APlayerController>(GetController())->ActivateTouchInterface(mainMenuTouchInterface);
-		isTouchInterfaceEnabled = true;
-	}
 }
 
 // Called every frame
@@ -41,3 +35,44 @@ void AMainMenuCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 
 }
 
+void AMainMenuCharacter::EnableUIInput()
+{
+	FInputModeGameOnly GameInputMode;
+	GameInputMode.SetConsumeCaptureMouseDown(true); // Capture mouse down right away
+
+	if (Cast<APlayerController>(GetController()))
+	{
+		Cast<APlayerController>(GetController())->SetInputMode(GameInputMode);
+	}
+
+	FInputModeGameAndUI InputMode;
+	InputMode.SetHideCursorDuringCapture(false); // Don't hide the cursor during capture
+
+	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock); // Don't worry about mouse lock
+
+	if (Cast<APlayerController>(GetController()))
+	{
+		Cast<APlayerController>(GetController())->SetInputMode(InputMode);
+
+		if (Cast<APlayerController>(GetController())->bShowMouseCursor != true)
+		{
+			Cast<APlayerController>(GetController())->bShowMouseCursor = true;
+		}
+	}
+}
+
+//void AMainMenuCharacter::InitializeMainMenuMobileWidget()
+//{
+//	// Only for developing the build on mobile devices
+//	if (mainMenuMobileWidgetClass)
+//	{
+//		UMainMenuWidget_MobileVersion* mainMenuMobileWidget = CreateWidget<UMainMenuWidget_MobileVersion>
+//			(Cast<APlayerController>(GetController()), mainMenuMobileWidgetClass);
+//
+//		if (mainMenuMobileWidget)
+//		{
+//			mainMenuMobileWidget->AddToViewport();
+//			mainMenuMobileWidget = nullptr;
+//		}
+//	}
+//}

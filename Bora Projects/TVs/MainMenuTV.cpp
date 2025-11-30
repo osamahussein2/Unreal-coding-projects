@@ -50,7 +50,10 @@ void AMainMenuTV::BeginPlay()
 	matInstanceDynamic = UMaterialInstanceDynamic::Create(planeMesh->GetMaterial(0), this);
 	planeMesh->SetMaterial(0, matInstanceDynamic); // Assign the dynamic material instance
 
-	EnableUIInput();
+	FVector2D UV;
+
+	// Putting this call in BeginPlay will prevent 2 buttons appearing to be hovered at the same time
+	UpdateWidgetInteractionTransform(WorldToWidgetSpace(UV));
 }
 
 // Called every frame
@@ -74,7 +77,11 @@ void AMainMenuTV::Tick(float DeltaTime)
 
 void AMainMenuTV::ProcessInteraction(float DeltaTime)
 {
-	if (!playerController || !planeMesh || !widgetComponent) return;
+	if (!playerController || !planeMesh)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Missing player controller and/or plane mesh!"));
+		return;
+	}
 
 	FVector HitLocation;
 	FVector2D UV;
@@ -82,36 +89,23 @@ void AMainMenuTV::ProcessInteraction(float DeltaTime)
 	if (TraceForUIMesh(HitLocation, UV))
 	{
 		currentHitLocation = HitLocation;
-		FVector2D WidgetPosition = WorldToWidgetSpace(UV);
 
-		UpdateWidgetInteractionTransform(WidgetPosition);
-		lastWidgetMousePosition = WidgetPosition;
-		meshHit = true;
-	}
+		UpdateWidgetInteractionTransform(WorldToWidgetSpace(UV));
+		lastWidgetMousePosition = WorldToWidgetSpace(UV);
 
-	else
-	{
-		meshHit = false;
+		PollMouseInput();
 	}
-	
-	PollMouseInput();
 }
 
 void AMainMenuTV::PollMouseInput()
 {
-	if (!playerController || !meshHit) return;
+	if (!playerController) return;
 
 	HandleMouseButton(EKeys::LeftMouseButton, leftMousePressed);
 }
 
 bool AMainMenuTV::TraceForUIMesh(FVector& OutHitLocation, FVector2D& OutUVCoordinates)
 {
-	if (!playerController || !planeMesh)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Missing player controller and/or plane mesh!"));
-		return false;
-	}
-
 	float MouseX, MouseY;
 	if (!playerController->GetMousePosition(MouseX, MouseY)) return false;
 
@@ -174,11 +168,9 @@ void AMainMenuTV::UpdateWidgetInteractionTransform(const FVector2D& WidgetPositi
 	widgetInteraction->SetWorldRotation((-ForwardVector).Rotation());
 }
 
-
-
 void AMainMenuTV::SendPointerEvent(const FKey& Key, bool bIsPressed)
 {
-	if (!widgetComponent || !widgetInteraction || !meshHit) return;
+	if (!widgetComponent || !widgetInteraction) return;
 
 	if (bIsPressed)
 	{
@@ -200,14 +192,4 @@ void AMainMenuTV::HandleMouseButton(const FKey& Key, bool& WasPressed)
 		SendPointerEvent(Key, playerController->IsInputKeyDown(Key));
 		WasPressed = playerController->IsInputKeyDown(Key);
 	}
-}
-
-void AMainMenuTV::EnableUIInput()
-{
-	FInputModeGameOnly GameInputMode;
-	GameInputMode.SetConsumeCaptureMouseDown(true); // Capture mouse down right away
-	playerController->SetInputMode(GameInputMode);
-
-	// Make sure the mouse cursor is turned on for clicking on main menu buttons
-	if (playerController->bShowMouseCursor != true) playerController->bShowMouseCursor = true;
 }

@@ -4,6 +4,7 @@
 #include "Characters/Enemies/Enemy.h"
 #include "Widgets/EnemyWidget.h"
 #include "Characters/Player/PlayerCharacter.h"
+#include "Objects/Blender.h"
 
 // Sets default values
 AEnemy::AEnemy()
@@ -26,11 +27,16 @@ AEnemy::AEnemy()
 	/*aiPerception->ConfigureSense(*SightConfig);
 	aiPerception->SetDominantSense(SightConfig->GetSenseImplementation());*/
 
-	seenPlayer = false;
 	timerCleared = true;
 
-	playerNear = false;
-	playerDetected = false;
+	patrolIndex = 0;
+
+	checkingOutDuckTimer = 0.0f;
+
+	duckLocation = FVector::Zero();
+
+	enemyState = EnemyState::EPatrolling;
+	previousEnemyState = EnemyState::EPatrolling;
 }
 
 // Called when the game starts or when spawned
@@ -60,10 +66,11 @@ void AEnemy::BeginPlay()
 		aiPerception->OnTargetPerceptionForgotten.AddDynamic(this, &AEnemy::OnTargetPerceptionForgotten);
 	}*/
 
-	if (seenPlayer != false) seenPlayer = false;
 	if (timerCleared != true) timerCleared = true;
-	if (playerNear != false) playerNear = false;
-	if (playerDetected != false) playerDetected = false;
+
+	if (patrolIndex != 0) patrolIndex = 0;
+
+	if (checkingOutDuckTimer != 0.0f) checkingOutDuckTimer = 0.0f;
 
 	// Find a player in the level
 	TArray<AActor*> FoundPlayer;
@@ -76,19 +83,93 @@ void AEnemy::BeginPlay()
 void AEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-	if (aiController && seenPlayer)
+	
+	switch (enemyState)
 	{
+	case EnemyState::EPatrolling:
+
+		// Test code for enemy detection and chasing the player
+		if (FVector::Distance(GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation(),
+			GetActorLocation()) <= distanceToDetect &&
+			FVector::DotProduct(GetActorForwardVector(), GetDirectionVector(GetWorld()->GetFirstPlayerController()->
+				GetPawn()->GetActorLocation())) >= minDetectionDotProductValue)
+		{
+			previousEnemyState = EnemyState::EPatrolling;
+			enemyState = EnemyState::ESeenPlayer;
+		}
+
+		PatrolAround();
+		break;
+
+	case EnemyState::ECheckingOutDuck:
+
+		// Test code for enemy detection and chasing the player
+		if (FVector::Distance(GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation(),
+			GetActorLocation()) <= distanceToDetect &&
+			FVector::DotProduct(GetActorForwardVector(), GetDirectionVector(GetWorld()->GetFirstPlayerController()->
+				GetPawn()->GetActorLocation())) >= minDetectionDotProductValue)
+		{
+			UpdateEnemyDetectionBarUponSeen(DeltaTime);
+		}
+
+		PatrolToDuckLocation(DeltaTime);
+		break;
+
+	case EnemyState::ELosingPlayer:
+
+		// Test code for enemy detection and chasing the player
+		if (FVector::Distance(GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation(),
+			GetActorLocation()) <= distanceToDetect &&
+			FVector::DotProduct(GetActorForwardVector(), GetDirectionVector(GetWorld()->GetFirstPlayerController()->
+				GetPawn()->GetActorLocation())) >= minDetectionDotProductValue)
+		{
+			previousEnemyState = EnemyState::ELosingPlayer;
+			enemyState = EnemyState::ESeenPlayer;
+		}
+
+		// Update enemy detection bar when enemy loses sight of player
+		UpdateEnemyDetectionBarUponLost(DeltaTime);
+		DamagePlayer(DeltaTime);
+
+		PatrolAround();
+		break;
+
+	case EnemyState::ESeenPlayer:
+		
+		// Test code for enemy detection and losing sight of the player
+		if (FVector::Distance(GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation(),
+				GetActorLocation()) > distanceToDetect)
+		{
+			previousEnemyState = EnemyState::ESeenPlayer;
+			enemyState = EnemyState::ELosingPlayer;
+		}
+
+		else if (FVector::DotProduct(GetActorForwardVector(), GetDirectionVector(
+			GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation())) < minDetectionDotProductValue)
+		{
+			previousEnemyState = EnemyState::ESeenPlayer;
+			enemyState = EnemyState::ELosingPlayer;
+		}
+
+		// Update enemy detection bar when player is seen
 		UpdateEnemyDetectionBarUponSeen(DeltaTime);
 		DamagePlayer(DeltaTime);
-	}
 
-	if (!seenPlayer && playerNear && !playerDetected)
-	{
-		UpdateEnemyDetectionBarUponLost(DeltaTime);
-	}
+		PatrolAround();
 
-	UpdatePlayerSeenBoolean();
+		break;
+
+	case EnemyState::EDetectedPlayer:
+
+		DamagePlayer(DeltaTime);
+
+		// Move the enemy towards the player
+		aiController->MoveToLocation(GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation(), stoppingRadius);
+		break;
+
+	default:
+		break;
+	}
 }
 
 // Return a direction vector that can pass in a LEFT HAND reference argument
@@ -103,39 +184,11 @@ FVector AEnemy::GetDirectionVector(FVector&& otherLocation_)
 	return (otherLocation_ - GetActorLocation()).GetSafeNormal();
 }
 
-void AEnemy::UpdatePlayerSeenBoolean()
-{
-	// Test code for enemy detection and chasing the player
-	if (!seenPlayer && FVector::Distance(GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation(),
-		GetActorLocation()) <= distanceToDetect &&
-		FVector::DotProduct(GetActorForwardVector(), GetDirectionVector(GetWorld()->GetFirstPlayerController()->
-			GetPawn()->GetActorLocation())) >= minDetectionDotProductValue)
-	{
-		seenPlayer = true;
-	}
-
-	// Test code for enemy detection and losing sight of the player
-	else if (seenPlayer && FVector::Distance(GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation(),
-		GetActorLocation()) > distanceToDetect && !playerDetected)
-	{
-		seenPlayer = false;
-	}
-
-	else if (seenPlayer && FVector::DotProduct(GetActorForwardVector(), GetDirectionVector(GetWorld()->
-		GetFirstPlayerController()->GetPawn()->GetActorLocation())) < minDetectionDotProductValue && !playerDetected)
-	{
-		seenPlayer = false;
-	}
-}
-
 void AEnemy::UpdateEnemyDetectionBarUponSeen(float& DeltaTime)
 {
 	// If enemy hasn't fully detected the player yet
 	if (!FMath::IsNearlyEqual(detectionValue, 1.15f, 0.1f))
 	{
-		// Make sure the player near is set to true first to update the enemy losing sight of player logic
-		if (playerNear != true) playerNear = true;
-
 		// Clear the timer if needed only once
 		if (!timerCleared)
 		{
@@ -172,6 +225,10 @@ void AEnemy::UpdateEnemyDetectionBarUponSeen(float& DeltaTime)
 				// Play the update bar size animation once player is detected
 				if (!enemyWidget->GetIsBarAnimationPlaying())
 				{
+					// Call start animating blender to play its animation
+					StartAnimatingBlender();
+
+					// Play enemy detection sound
 					UGameplayStatics::PlaySound2D(this, LoadObject<USoundBase>(this, 
 						TEXT("/Game/Sounds/enemy_detection_1")));
 
@@ -188,13 +245,10 @@ void AEnemy::UpdateEnemyDetectionBarUponSeen(float& DeltaTime)
 		}
 
 		// Make sure player detected is true to prevent enemy from immediately losing sight of player
-		if (playerDetected != true) playerDetected = true;
+		if (enemyState != EnemyState::EDetectedPlayer) enemyState = EnemyState::EDetectedPlayer;
 
 		// Update timer cleared once and make it false
 		if (timerCleared != false) timerCleared = false;
-
-		// Move the enemy towards the player
-		aiController->MoveToLocation(GetWorld()->GetFirstPlayerController()->GetPawn()->GetActorLocation(), stoppingRadius);
 	}
 }
 
@@ -252,6 +306,8 @@ void AEnemy::HideEnemyWidgetUponSeen()
 		enemyWidget = nullptr;
 	}
 
+	detectionValue = 1.0f;
+
 	if (widgetComponent) widgetComponent->SetTintColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, 0.0f));
 	widgetVisible = false;
 }
@@ -263,7 +319,11 @@ void AEnemy::HideEnemyWidgetUponLost()
 	detectionValue = 0.0f;
 	widgetVisible = false;
 
-	playerNear = false;
+	if (enemyState != EnemyState::EPatrolling)
+	{
+		previousEnemyState = EnemyState::ELosingPlayer;
+		enemyState = EnemyState::EPatrolling;
+	}
 }
 
 void AEnemy::DamagePlayer(float& DeltaTime)
@@ -274,6 +334,110 @@ void AEnemy::DamagePlayer(float& DeltaTime)
 		//UE_LOG(LogTemp, Warning, TEXT("Player found"));
 		player->GetHealthRegenerationComponent()->StartDamaged.Broadcast(0.3f);
 	}
+}
+
+void AEnemy::StartAnimatingBlender()
+{
+	TArray<AActor*> FoundBlender;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ABlender::StaticClass(), FoundBlender);
+
+	for (AActor* blenderActor : FoundBlender)
+	{
+		ABlender* blender = Cast<ABlender>(blenderActor);
+		blenderActor = nullptr;
+
+		if (blender)
+		{
+			blender->PlayBlenderAlarmedAnimation();
+			blender = nullptr;
+		}
+	}
+}
+
+void AEnemy::PatrolAround()
+{
+	if (aiController && !patrolRoutes.IsEmpty())
+	{
+		// Change patrol route after being near one of the patrol points
+		if (FVector::Distance(GetActorLocation(), patrolRoutes[patrolIndex]) <= distanceToSwitchPatrolRoute)
+		{
+			if (patrolIndex < patrolRoutes.Num() - 1) ++patrolIndex;
+			else patrolIndex = 0;
+		}
+
+		// Make sure the AI moves to some patrol route at its index
+		else
+		{
+			aiController->MoveToLocation(patrolRoutes[patrolIndex], stopAtPatrolRadius);
+		}
+	}
+}
+
+void AEnemy::PatrolToDuckLocation(float& DeltaTime)
+{
+	if (aiController)
+	{
+		// Wait for a bit to check out the duck and start patrolling again
+		if (FVector::Distance(GetActorLocation(), duckLocation) <= distanceToDuck)
+		{
+			checkingOutDuckTimer += DeltaTime;
+
+			if (checkingOutDuckTimer >= timeToPatrolAgain)
+			{
+				checkingOutDuckTimer = 0.0f;
+
+				previousEnemyState = EnemyState::ECheckingOutDuck;
+				enemyState = EnemyState::EPatrolling;
+			}
+		}
+
+		// Move the AI to the duck's location if it's not close to the duck yet
+		else
+		{
+			aiController->MoveToLocation(duckLocation, stopAtPatrolRadius);
+		}
+	}
+}
+
+void AEnemy::SetEnemyState(EnemyState enemyState_)
+{
+	if (enemyState_ == EnemyState::EDetectedPlayer)
+	{
+		// Make enemy fully detect the player if the passed in state is set to detected player
+		detectionValue = 1.1f;
+	}
+
+	enemyState = enemyState_;
+}
+
+void AEnemy::EnemyIsCloseToDuck()
+{
+	if (enemyState == EnemyState::ESeenPlayer) previousEnemyState = EnemyState::ESeenPlayer;
+	enemyState = EnemyState::ECheckingOutDuck;
+}
+
+void AEnemy::SetEnemyToDetectPlayer()
+{
+	if (previousEnemyState == EnemyState::ESeenPlayer)
+	{
+		// Make enemy fully detect the player if they saw the player throw the duck near them
+		detectionValue = 1.1f;
+
+		// Also update the enemy detection bar in its widget
+		if (UEnemyWidget* enemyWidget = Cast<UEnemyWidget>(widgetComponent->GetWidget()))
+		{
+			enemyWidget->SetEnemyDetectionBar(detectionValue);
+			enemyWidget = nullptr;
+		}
+
+		enemyState = EnemyState::ESeenPlayer;
+		previousEnemyState = EnemyState::ECheckingOutDuck;
+	}
+}
+
+void AEnemy::GoToDuckLocation(FVector&& duckLocation_)
+{
+	duckLocation = duckLocation_;
 }
 
 /*void AEnemy::OnTargetPerceptionUpdated(AActor* TargetActor, FAIStimulus Stimulus)

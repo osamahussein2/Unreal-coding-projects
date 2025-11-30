@@ -11,7 +11,7 @@ AMainEnemy::AMainEnemy()
 
 	regularHealthComponent = CreateDefaultSubobject<URegularHealthComponent>(TEXT("RegularHealthComponent"));
 
-	spriteComponent = CreateDefaultSubobject<UPaperSpriteComponent>(TEXT("MinimapSprite"));
+	spriteComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MinimapSprite"));
 	spriteComponent->SetupAttachment(GetMesh());
 
 	spriteComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
