@@ -22,3 +22,9 @@ CORAL DISTRICT 199X - https://osamahussein.itch.io/coral-district-199x
 
 Dungeon Dragons - https://osamahussein.itch.io/dungeon-dragons
 
+Forest Frequency - https://victorrmk.itch.io/forest-frequency
+
+Relic Rapture - https://moxylovette.itch.io/relic-rapture
+
+The Trail of the Jungle - https://osamahussein.itch.io/the-trail-of-the-jungle
+

@@ -1,0 +1,1 @@
+return Texture2DSample(RenderTargetTexture, RenderTargetTextureSampler, UV);
