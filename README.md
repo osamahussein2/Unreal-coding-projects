@@ -28,3 +28,5 @@ Relic Rapture - https://moxylovette.itch.io/relic-rapture
 
 The Trail of the Jungle - https://osamahussein.itch.io/the-trail-of-the-jungle
 
+Arcade Breakout - https://osamahussein.itch.io/arcade-breakout
+
